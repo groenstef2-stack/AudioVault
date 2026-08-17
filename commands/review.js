@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { saveReview } from "../db.js";
 
 const STARS = { 1: "⭐", 2: "⭐⭐", 3: "⭐⭐⭐", 4: "⭐⭐⭐⭐", 5: "⭐⭐⭐⭐⭐" };
 
@@ -41,6 +42,18 @@ export async function execute(interaction) {
     .setDescription(message)
     .setFooter({ text: `Review van ${interaction.user.id}` })
     .setTimestamp();
+
+  // Sla de review op in de database (indien gekoppeld)
+  try {
+    await saveReview({
+      userId: interaction.user.id,
+      username: interaction.user.tag,
+      rating,
+      message,
+    });
+  } catch (err) {
+    console.error("Kon review niet opslaan in database:", err);
+  }
 
   // Post de review in het aangewezen reviews-kanaal
   if (reviewChannelId) {
