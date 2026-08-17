@@ -20,7 +20,7 @@ export async function createTicket(interaction) {
   const existing = guild.channels.cache.find((c) => c.name === channelName);
   if (existing) {
     await interaction.reply({
-      content: `Je hebt al een open ticket: ${existing}`,
+      content: `You already have an open ticket: ${existing}`,
       ephemeral: true,
     });
     return;
@@ -65,20 +65,20 @@ export async function createTicket(interaction) {
     type: ChannelType.GuildText,
     parent: categoryId || undefined,
     permissionOverwrites: overwrites,
-    topic: `Ticket van ${user.id}`,
+    topic: `Ticket from ${user.id}`,
   });
 
   const embed = new EmbedBuilder()
     .setColor(0x5865f2)
     .setTitle("Ticket geopend")
     .setDescription(
-      `Hoi ${user}, welkom in je ticket! Beschrijf hieronder je vraag of probleem, dan helpt ons team je zo snel mogelijk.`
+      `Hoi ${user}, Welcome to your ticket! Please describe your question or problem below, and our team will help you as soon as possible.`
     );
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("close_ticket")
-      .setLabel("Sluit Ticket")
+      .setLabel("Close Ticket")
       .setEmoji("🔒")
       .setStyle(ButtonStyle.Danger)
   );
@@ -97,11 +97,11 @@ export async function createTicket(interaction) {
       username: user.tag,
     });
   } catch (err) {
-    console.error("Kon ticket niet opslaan in database:", err);
+    console.error("Could not save ticket to database:", err);
   }
 
   await interaction.reply({
-    content: `Je ticket is aangemaakt: ${channel}`,
+    content: `Your ticket has been created: ${channel}`,
     ephemeral: true,
   });
 }
@@ -112,20 +112,20 @@ export async function closeTicket(interaction) {
 
   if (!channel.name.startsWith("ticket-")) {
     await interaction.reply({
-      content: "Dit commando kan alleen in een ticketkanaal gebruikt worden.",
+      content: "This command can only be used in a ticket channel.",
       ephemeral: true,
     });
     return;
   }
 
   await interaction.reply({
-    content: "Dit ticket wordt over 5 seconden gesloten...",
+    content: "This ticket will be closed in 5 seconds...",
   });
 
   try {
     await saveTicketClosed({ channelId: channel.id, closedBy: interaction.user.tag });
   } catch (err) {
-    console.error("Kon ticket-sluiting niet opslaan in database:", err);
+    console.error("Could not save ticket closure to database:", err);
   }
 
   const logChannelId = process.env.TICKET_LOG_CHANNEL_ID;
@@ -136,8 +136,8 @@ export async function closeTicket(interaction) {
     if (logChannel) {
       const embed = new EmbedBuilder()
         .setColor(0xed4245)
-        .setTitle("Ticket gesloten")
-        .setDescription(`Kanaal: ${channel.name}\nGesloten door: ${interaction.user.tag}`)
+        .setTitle("Ticket closed")
+        .setDescription(`Channel: ${channel.name}\nClosed by: ${interaction.user.tag}`)
         .setTimestamp();
       await logChannel.send({ embeds: [embed] });
     }
