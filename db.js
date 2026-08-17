@@ -14,7 +14,7 @@ export const pool = process.env.DATABASE_URL
 // Maakt de benodigde tabellen aan als ze nog niet bestaan. Wordt bij opstarten aangeroepen.
 export async function initDatabase() {
   if (!pool) {
-    console.log("ℹ️  Geen DATABASE_URL gevonden — database opslag is uitgeschakeld.");
+    console.log("ℹ️ No DATABASE_URL found — database storage is disabled.");
     return;
   }
 
@@ -43,7 +43,7 @@ export async function initDatabase() {
     );
   `);
 
-  console.log("✅ Database tabellen zijn klaar (reviews, tickets).");
+  console.log("✅ Database tables are ready (reviews, tickets).");
 }
 
 export async function saveReview({ userId, username, rating, message }) {
