@@ -27,7 +27,7 @@ for (const file of commandFiles) {
 
 // --- Bot is online ---
 client.once("clientReady", async () => {
-  console.log(`✅ Ingelogd als ${client.user.tag}`);
+  console.log(`✅ Logged in as ${client.user.tag}`);
   await initDatabase();
 });
 
@@ -54,7 +54,7 @@ client.on("interactionCreate", async (interaction) => {
   } catch (error) {
     console.error(error);
     const errorMessage = {
-      content: "Er ging iets mis bij het uitvoeren hiervan.",
+      content: "Something went wrong while carrying this out.",
       ephemeral: true,
     };
     if (interaction.replied || interaction.deferred) {
