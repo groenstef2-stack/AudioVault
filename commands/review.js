@@ -9,7 +9,7 @@ export const data = new SlashCommandBuilder()
   .addIntegerOption((option) =>
     option
       .setName("rating")
-      .setDescription("Hoeveel sterren geef je?")
+      .setDescription("How many stars do you give?")
       .setRequired(true)
       .addChoices(
         { name: "⭐ (1)", value: 1 },
@@ -21,15 +21,15 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption((option) =>
     option
-      .setName("bericht")
-      .setDescription("Je review in tekst")
+      .setName("message")
+      .setDescription("Your review in text")
       .setRequired(true)
       .setMaxLength(1000)
   );
 
 export async function execute(interaction) {
   const rating = interaction.options.getInteger("rating");
-  const message = interaction.options.getString("bericht");
+  const message = interaction.options.getString("message");
   const reviewChannelId = process.env.REVIEW_CHANNEL_ID;
 
   const embed = new EmbedBuilder()
@@ -52,7 +52,7 @@ export async function execute(interaction) {
       message,
     });
   } catch (err) {
-    console.error("Kon review niet opslaan in database:", err);
+    console.error("Could not save review to database:", err);
   }
 
   // Post de review in het aangewezen reviews-kanaal
@@ -81,12 +81,12 @@ export async function execute(interaction) {
         }),
       });
     } catch (err) {
-      console.error("Kon review niet naar Base44 sturen:", err);
+      console.error("Could not send review to Base44:", err);
     }
   }
 
   await interaction.reply({
-    content: "Bedankt voor je review! ✅",
+    content: "Thanks for your review! ✅",
     ephemeral: true,
   });
 }
