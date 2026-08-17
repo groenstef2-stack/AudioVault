@@ -9,7 +9,7 @@ import {
 
 export const data = new SlashCommandBuilder()
   .setName("setup-tickets")
-  .setDescription("Plaats het ticket-paneel in dit kanaal (alleen voor admins)")
+  .setDescription("Place the ticket panel in this channel (admins only)")
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 export async function execute(interaction) {
@@ -17,7 +17,7 @@ export async function execute(interaction) {
     .setColor(0x5865f2)
     .setTitle("🎫 Support Tickets")
     .setDescription(
-      "Heb je een vraag of probleem? Klik op de knop hieronder om een privé ticket te openen. Ons team helpt je zo snel mogelijk."
+      "Do you have a question, a problem, or would you like to place an order with Robux? Click the button below to open a private ticket. Our team will help you as soon as possible."
     );
 
   const row = new ActionRowBuilder().addComponents(
@@ -29,5 +29,5 @@ export async function execute(interaction) {
   );
 
   await interaction.channel.send({ embeds: [embed], components: [row] });
-  await interaction.reply({ content: "Ticket-paneel geplaatst ✅", ephemeral: true });
+  await interaction.reply({ content: "Ticket panel installed ✅", ephemeral: true });
 }
