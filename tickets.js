@@ -6,6 +6,7 @@ import {
   ButtonStyle,
   EmbedBuilder,
 } from "discord.js";
+import { saveTicketOpened, saveTicketClosed } from "./db.js";
 
 // Maakt een nieuw privé ticketkanaal aan voor de gebruiker die op de knop klikte
 export async function createTicket(interaction) {
@@ -88,6 +89,17 @@ export async function createTicket(interaction) {
     components: [row],
   });
 
+  try {
+    await saveTicketOpened({
+      channelId: channel.id,
+      channelName: channel.name,
+      userId: user.id,
+      username: user.tag,
+    });
+  } catch (err) {
+    console.error("Kon ticket niet opslaan in database:", err);
+  }
+
   await interaction.reply({
     content: `Je ticket is aangemaakt: ${channel}`,
     ephemeral: true,
@@ -109,6 +121,12 @@ export async function closeTicket(interaction) {
   await interaction.reply({
     content: "Dit ticket wordt over 5 seconden gesloten...",
   });
+
+  try {
+    await saveTicketClosed({ channelId: channel.id, closedBy: interaction.user.tag });
+  } catch (err) {
+    console.error("Kon ticket-sluiting niet opslaan in database:", err);
+  }
 
   const logChannelId = process.env.TICKET_LOG_CHANNEL_ID;
   if (logChannelId) {
