@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createTicket, closeTicket } from "./tickets.js";
+import { initDatabase } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,8 +26,9 @@ for (const file of commandFiles) {
 }
 
 // --- Bot is online ---
-client.once("clientReady", () => {
+client.once("clientReady", async () => {
   console.log(`✅ Ingelogd als ${client.user.tag}`);
+  await initDatabase();
 });
 
 // --- Alle interacties afhandelen (slash commands + knoppen) ---
@@ -64,3 +66,4 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
