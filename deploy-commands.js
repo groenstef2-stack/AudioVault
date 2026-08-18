@@ -29,7 +29,7 @@ try {
     { body: commands }
   );
 
-  console.log(`✅ ${data.length} command(s) Successfully registered.`);
+  console.log(`✅ ${data.length} command(s) succesvol geregistreerd.`);
 } catch (error) {
   console.error(error);
 }
