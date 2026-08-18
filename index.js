@@ -5,14 +5,18 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createTicket, closeTicket } from "./tickets.js";
 import { initDatabase } from "./db.js";
+import { sendWelcomeMessage } from "./welcome.js";
+import { handleEmbedModalSubmit } from "./commands/embed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  // GuildMembers is a privileged intent: it must also be enabled in the
+  // Discord Developer Portal under Bot -> Privileged Gateway Intents.
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 });
 
-// --- Slash commands automatisch inladen uit de map "commands" ---
+// --- Load slash commands automatically from the "commands" folder ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, "commands");
 const commandFiles = fs
@@ -31,7 +35,12 @@ client.once("clientReady", async () => {
   await initDatabase();
 });
 
-// --- Alle interacties afhandelen (slash commands + knoppen) ---
+// --- Welcome new members ---
+client.on("guildMemberAdd", async (member) => {
+  await sendWelcomeMessage(member);
+});
+
+// --- Handle all interactions (slash commands, buttons, modals) ---
 client.on("interactionCreate", async (interaction) => {
   try {
     if (interaction.isChatInputCommand()) {
@@ -42,8 +51,12 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isButton()) {
-      if (interaction.customId === "create_ticket") {
-        await createTicket(interaction);
+      if (interaction.customId === "create_ticket_support") {
+        await createTicket(interaction, "support");
+        return;
+      }
+      if (interaction.customId === "create_ticket_work") {
+        await createTicket(interaction, "work");
         return;
       }
       if (interaction.customId === "close_ticket") {
@@ -51,10 +64,17 @@ client.on("interactionCreate", async (interaction) => {
         return;
       }
     }
+
+    if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith("embed_modal_")) {
+        await handleEmbedModalSubmit(interaction);
+        return;
+      }
+    }
   } catch (error) {
     console.error(error);
     const errorMessage = {
-      content: "Something went wrong while carrying this out.",
+      content: "Something went wrong while handling this.",
       ephemeral: true,
     };
     if (interaction.replied || interaction.deferred) {
