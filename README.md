@@ -13,8 +13,9 @@ Een bot met:
 2. Klik **New Application**, geef een naam, klik **Create**.
 3. Ga naar het tabblad **Bot** (links) → **Reset Token** → kopieer het token.
    Dit is je `DISCORD_TOKEN`. **Deel dit nooit met iemand.**
-4. Scroll naar **Privileged Gateway Intents** — voor deze bot hoef je niks aan te
-   vinken (we gebruiken alleen slash commands en knoppen).
+4. Scroll naar **Privileged Gateway Intents** en zet **Server Members Intent**
+   aan (nodig voor de welkomstberichten bij nieuwe leden). Klik **Save Changes**.
+   Zonder dit aan te zetten start de bot niet op zodra je de nieuwste code draait.
 5. Ga naar het tabblad **General Information** → kopieer de **Application ID**.
    Dit is je `CLIENT_ID`.
 
@@ -74,19 +75,41 @@ Typ in het kanaal waar je het ticket-paneel wilt, als admin:
 ```
 /setup-tickets
 ```
-Er verschijnt een bericht met een knop **"Open Ticket"**. Elke gebruiker die
-erop klikt krijgt een eigen privé kanaal (`ticket-gebruikersnaam`) aangemaakt,
-zichtbaar voor henzelf, de bot en de support-rol. In dat kanaal kan iedereen
-met voldoende rechten op **"Sluit Ticket"** klikken om het kanaal na 5 seconden
-te verwijderen (en optioneel te loggen in je logkanaal).
+Er verschijnt een bericht met twee knoppen:
+- **🎫 Open Support Ticket** — voor algemene vragen/problemen
+- **💼 Work For Us** — voor sollicitaties
+
+Elke gebruiker die op een knop klikt krijgt een eigen privé kanaal aangemaakt
+(`ticket-gebruikersnaam` of `application-gebruikersnaam`), zichtbaar voor
+henzelf, de bot en de support-rol, met een passend welkomstbericht. In dat
+kanaal kan iedereen met voldoende rechten op **"Close Ticket"** klikken om het
+kanaal na 5 seconden te verwijderen (en optioneel te loggen in je logkanaal).
 
 ## Stap 8 — Reviews plaatsen
 
 Iedereen kan overal typen:
 ```
-/review rating:5 bericht:Top service, heel snel geholpen!
+/review rating:5 message:Great service, helped me super fast!
 ```
 De review verschijnt als nette embed (met sterren) in je `REVIEW_CHANNEL_ID`.
+
+## Stap 9 — Eigen embed-berichten sturen (alleen admins)
+
+Typ, als admin:
+```
+/embed channel:#aankondigingen
+```
+Er verschijnt een formulier waarin je titel, tekst, kleur, afbeelding-URL en
+footer kunt invullen. Na verzenden plaatst de bot het bericht direct in het
+gekozen kanaal. Alleen mensen met "Manage Server"-rechten zien dit commando
+en kunnen het gebruiken.
+
+## Stap 10 — Welkomstberichten
+
+Zodra je `WELCOME_CHANNEL_ID` in je `.env` (of Railway Variables) hebt
+ingevuld, stuurt de bot automatisch een welkomstbericht naar dat kanaal zodra
+iemand nieuw de server binnenkomt. Vergeet niet **Server Members Intent** aan
+te zetten in het Developer Portal (zie Stap 1) — zonder dat werkt dit niet.
 
 ---
 
@@ -99,6 +122,43 @@ naar die URL. Je hoeft dan alleen in Base44 een endpoint/workflow te maken die
 die JSON opslaat in je database — de botcode hoeft dan niet meer aangepast te
 worden. Laat het weten zodra je zover bent, dan help ik je de Base44-kant
 (en eventueel de exacte payload-vorm) verder in te richten.
+
+---
+
+## PostgreSQL database toevoegen (Railway)
+
+Elke review en elk ticket wordt automatisch ook opgeslagen in een database, náást de
+Discord-berichten — handig als backup, voor eigen statistieken, en als tussenstap
+richting je Base44-website.
+
+1. Open je project in Railway (niet de service, het hele project).
+2. Klik **+ New** → **Database** → **Add PostgreSQL**.
+3. Railway maakt de database aan en zet automatisch een `DATABASE_URL` variabele
+   klaar. **Belangrijk:** dit gebeurt in een aparte "Postgres" service — je moet 'm
+   nog delen met je bot-service.
+4. Ga naar je **bot-service** → tabblad **Variables** → **New Variable** →
+   gebruik de "Reference"-optie (of typ `${{Postgres.DATABASE_URL}}` als waarde,
+   Railway vult 'm dan automatisch aan met de echte connectiegegevens).
+5. De bot maakt bij het opstarten automatisch de benodigde tabellen aan
+   (`reviews` en `tickets`) — je hoeft zelf niks aan te maken.
+6. Check in de Railway logs of je ziet staan:
+   `✅ Database tabellen zijn klaar (reviews, tickets).`
+
+Zonder `DATABASE_URL` blijft de bot gewoon werken (alleen Discord-embeds, geen
+database-opslag) — dit is dus volledig optioneel.
+
+### Data bekijken
+Klik in Railway op je Postgres-service → tabblad **Data** om je tabellen en
+opgeslagen reviews/tickets direct in de browser te bekijken, of verbind met een
+tool als [TablePlus](https://tableplus.com/) of [DBeaver](https://dbeaver.io/)
+via de connectiegegevens die Railway toont.
+
+### Koppeling met Base44
+Base44 gebruikt zelf een ingebouwde database en ondersteunt momenteel geen
+rechtstreekse externe Postgres-koppeling. Daarom blijft de `BASE44_WEBHOOK_URL`
+(hierboven) de aanbevolen weg om reviews ook op je website te krijgen: de
+Postgres-database is voor jouw eigen data/backup, de webhook stuurt dezelfde
+review-data naar Base44 zodra jij daar een endpoint voor hebt ingericht.
 
 ---
 
@@ -124,13 +184,16 @@ deploy-stappen heen.
 
 ```
 discord-bot/
-├── index.js              # Hoofdbestand: start de bot, verwerkt commands & knoppen
-├── deploy-commands.js     # Registreert de slash commands bij Discord
-├── tickets.js             # Logica voor ticket aanmaken/sluiten
+├── index.js               # Hoofdbestand: start de bot, verwerkt commands, knoppen & modals
+├── deploy-commands.js      # Registreert de slash commands bij Discord
+├── tickets.js              # Logica voor ticket aanmaken/sluiten (support + work)
+├── welcome.js              # Welkomstbericht voor nieuwe leden
+├── db.js                   # PostgreSQL connectie en queries
 ├── commands/
-│   ├── review.js          # /review command
-│   └── setup-tickets.js   # /setup-tickets command
-├── .env.example           # Voorbeeld van benodigde instellingen
-├── .env                    # (zelf aanmaken, nooit delen!)
+│   ├── review.js            # /review command
+│   ├── setup-tickets.js     # /setup-tickets command
+│   └── embed.js              # /embed command (admin only)
+├── .env.example             # Voorbeeld van benodigde instellingen
+├── .env                      # (zelf aanmaken, nooit delen!)
 └── package.json
 ```
