@@ -2,8 +2,8 @@ import pg from "pg";
 
 const { Pool } = pg;
 
-// Railway's Postgres plugin zet automatisch DATABASE_URL klaar als environment variable.
-// Als die niet bestaat, draait de bot gewoon door zonder database (alleen Discord embeds).
+// Railway's Postgres plugin automatically provides DATABASE_URL as an environment variable.
+// If it doesn't exist, the bot simply runs without a database (Discord embeds only).
 export const pool = process.env.DATABASE_URL
   ? new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -11,10 +11,10 @@ export const pool = process.env.DATABASE_URL
     })
   : null;
 
-// Maakt de benodigde tabellen aan als ze nog niet bestaan. Wordt bij opstarten aangeroepen.
+// Creates the required tables if they don't exist yet. Called on startup.
 export async function initDatabase() {
   if (!pool) {
-    console.log("ℹ️ No DATABASE_URL found — database storage is disabled.");
+    console.log("ℹ️  No DATABASE_URL found — database storage is disabled.");
     return;
   }
 
@@ -36,11 +36,18 @@ export async function initDatabase() {
       channel_name TEXT NOT NULL,
       user_id TEXT NOT NULL,
       username TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'support',
       status TEXT NOT NULL DEFAULT 'open',
       opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       closed_at TIMESTAMPTZ,
       closed_by TEXT
     );
+  `);
+
+  // Migration safety net: adds the "type" column if this table already existed
+  // from before this feature was added (won't error if it's already there).
+  await pool.query(`
+    ALTER TABLE tickets ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'support';
   `);
 
   console.log("✅ Database tables are ready (reviews, tickets).");
@@ -54,11 +61,11 @@ export async function saveReview({ userId, username, rating, message }) {
   );
 }
 
-export async function saveTicketOpened({ channelId, channelName, userId, username }) {
+export async function saveTicketOpened({ channelId, channelName, userId, username, type }) {
   if (!pool) return;
   await pool.query(
-    `INSERT INTO tickets (channel_id, channel_name, user_id, username) VALUES ($1, $2, $3, $4)`,
-    [channelId, channelName, userId, username]
+    `INSERT INTO tickets (channel_id, channel_name, user_id, username, type) VALUES ($1, $2, $3, $4, $5)`,
+    [channelId, channelName, userId, username, type || "support"]
   );
 }
 
