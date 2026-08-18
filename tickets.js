@@ -8,15 +8,38 @@ import {
 } from "discord.js";
 import { saveTicketOpened, saveTicketClosed } from "./db.js";
 
-// Maakt een nieuw privé ticketkanaal aan voor de gebruiker die op de knop klikte
-export async function createTicket(interaction) {
+const TICKET_TYPES = {
+  support: {
+    prefix: "ticket",
+    label: "Support Ticket",
+    color: 0x5865f2,
+    welcomeText: (user) =>
+      `Hi ${user}, welcome to your support ticket! Please describe your question or issue below and our team will help you as soon as possible.`,
+  },
+  work: {
+    prefix: "application",
+    label: "Work For Us Application",
+    color: 0x57f287,
+    welcomeText: (user) =>
+      `Hi ${user}, thanks for your interest in joining the team! 💼\n\nPlease tell us:\n• Which position are you applying for?\n• Relevant experience or skills\n• Your availability\n\nOur team will review your application and get back to you soon.`,
+  },
+};
+
+// Creates a new private ticket channel for the user who clicked the button.
+// type is either "support" or "work".
+export async function createTicket(interaction, type = "support") {
   const guild = interaction.guild;
   const user = interaction.user;
-  const categoryId = process.env.TICKET_CATEGORY_ID;
+  const config = TICKET_TYPES[type] ?? TICKET_TYPES.support;
+
+  const categoryId =
+    type === "work"
+      ? process.env.WORK_CATEGORY_ID || process.env.TICKET_CATEGORY_ID
+      : process.env.TICKET_CATEGORY_ID;
   const supportRoleId = process.env.SUPPORT_ROLE_ID;
 
-  // Voorkom dubbele tickets: check of er al een kanaal is met deze naam
-  const channelName = `ticket-${user.username}`.toLowerCase().slice(0, 90);
+  // Prevent duplicate open tickets of the same type for this user
+  const channelName = `${config.prefix}-${user.username}`.toLowerCase().slice(0, 90);
   const existing = guild.channels.cache.find((c) => c.name === channelName);
   if (existing) {
     await interaction.reply({
@@ -65,15 +88,13 @@ export async function createTicket(interaction) {
     type: ChannelType.GuildText,
     parent: categoryId || undefined,
     permissionOverwrites: overwrites,
-    topic: `Ticket from ${user.id}`,
+    topic: `${config.label} from ${user.id}`,
   });
 
   const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle("Ticket geopend")
-    .setDescription(
-      `Hoi ${user}, Welcome to your ticket! Please describe your question or problem below, and our team will help you as soon as possible.`
-    );
+    .setColor(config.color)
+    .setTitle(config.label)
+    .setDescription(config.welcomeText(user));
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -95,6 +116,7 @@ export async function createTicket(interaction) {
       channelName: channel.name,
       userId: user.id,
       username: user.tag,
+      type,
     });
   } catch (err) {
     console.error("Could not save ticket to database:", err);
@@ -106,13 +128,16 @@ export async function createTicket(interaction) {
   });
 }
 
-// Sluit (verwijdert) het ticketkanaal, met korte countdown en optionele log
+// Closes (deletes) the ticket channel, with a short countdown and optional log entry.
 export async function closeTicket(interaction) {
   const channel = interaction.channel;
 
-  if (!channel.name.startsWith("ticket-")) {
+  const isTicketChannel =
+    channel.name.startsWith("ticket-") || channel.name.startsWith("application-");
+
+  if (!isTicketChannel) {
     await interaction.reply({
-      content: "This command can only be used in a ticket channel.",
+      content: "This command can only be used inside a ticket channel.",
       ephemeral: true,
     });
     return;
@@ -136,7 +161,7 @@ export async function closeTicket(interaction) {
     if (logChannel) {
       const embed = new EmbedBuilder()
         .setColor(0xed4245)
-        .setTitle("Ticket closed")
+        .setTitle("Ticket Closed")
         .setDescription(`Channel: ${channel.name}\nClosed by: ${interaction.user.tag}`)
         .setTimestamp();
       await logChannel.send({ embeds: [embed] });
